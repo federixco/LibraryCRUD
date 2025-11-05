@@ -6,8 +6,6 @@ import model.Libro;
 import javax.swing.*;
 import java.awt.*;
 
-
-
 /**
  * Clase: LibroForm
  * -----------------------
@@ -21,10 +19,6 @@ import java.awt.*;
  * 
  * 
  */
-
-
-
-
 
 public class LibroForm extends JDialog {
 

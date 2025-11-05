@@ -1,7 +1,5 @@
 package ui;
 
-
-
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableColumnModel;
