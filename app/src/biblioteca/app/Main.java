@@ -1,39 +1,49 @@
 package biblioteca.app;
 
+import db.DbInit;
+import session.Session;
+import ui.LoginDialog;
 import ui.Mainframe;
 import ui.UIUtil;
-import db.DbInit;
 
 import javax.swing.*;
 
 /**
- * Punto de entrada.
+ * Punto de entrada de la App:
+ * 1) Aplica L&F (Nimbus si está disponible)
+ * 2) Inicializa la base (crea tablas y seed si faltan)
+ * 3) Pide login y abre la ventana principal con la Session
  */
-
 public class Main {
-    public static void main(String[] args) {
-        System.out.println("Working dir = " + System.getProperty("user.dir"));
 
-        // Look & Feel más prolijo
+    public static void main(String[] args) {
+        // 1) Look & Feel
         UIUtil.applyNimbus();
 
-        // Inicializar BD
+        // 2) Inicializar base de datos
         try {
             DbInit.ensureInit();
         } catch (RuntimeException ex) {
             ex.printStackTrace();
-            String rutaReal = System.getProperty("user.home") + "/.biblioteca/biblioteca.db";
             JOptionPane.showMessageDialog(
-                null,
-                "No pude abrir/crear la base de datos.\n" +
-                "Ruta real del archivo:\n" + rutaReal + "\n\n" +
-                "Detalle: " + ex.getMessage(),
-                "Error de base de datos",
-                JOptionPane.ERROR_MESSAGE
+                    null,
+                    "No pude abrir/crear la base de datos.\n\nDetalle: " + ex.getMessage(),
+                    "Error BD",
+                    JOptionPane.ERROR_MESSAGE
             );
             return;
         }
 
-        SwingUtilities.invokeLater(() -> new Mainframe().setVisible(true));
+        // 3) Login → Session → Mainframe
+        SwingUtilities.invokeLater(() -> {
+            LoginDialog dlg = new LoginDialog(null);
+            dlg.setVisible(true);
+            if (dlg.getAutenticado() == null) {
+                // canceló o falló
+                return;
+            }
+            Session session = new Session(dlg.getAutenticado());
+            new Mainframe(session).setVisible(true);
+        });
     }
 }

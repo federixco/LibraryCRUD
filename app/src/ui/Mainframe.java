@@ -3,6 +3,7 @@ package ui;
 import dao.JdbcLibroDAO;
 import model.Libro;
 import service.LibroService;
+import session.Session;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -11,49 +12,73 @@ import java.awt.event.KeyEvent;
 import java.util.List;
 
 /**
- * Clase: MainFrame
- * -----------------------
- * Ventana principal de la aplicación (GUI en Swing).
- * Muestra una tabla con los libros y provee botones para CRUD (Nuevo/Editar/Eliminar)
- * y un campo de búsqueda por texto (título/autor/categoría).
- *
- * Flujo:
- *   - Crea un LibroService con un JdbcLibroDAO (la lógica de negocio y acceso a datos).
- *   - Carga los libros en un JTable.
- *   - Abre un diálogo (LibroForm) para alta/edición.
- */
-
-
-/**
- * Ventana principal con barra de acciones, búsqueda y tabla estilizada.
+ * Mainframe
+ * ---------
+ * Ventana principal del sistema de Biblioteca.
+ * - CRUD de Libros (con búsqueda).
+ * - Permisos por rol (Operador no puede eliminar).
+ * - Menú "Usuarios" visible solo para ADMIN (gestión y alta de operadores).
+ * - Muestra usuario/rol en el título.
  */
 public class Mainframe extends JFrame {
 
+    // --- Sesión actual ---
+    private final Session session;
+
+    // --- Servicio de negocio ---
     private final LibroService service = new LibroService(new JdbcLibroDAO());
 
-    // Modelo tipado para que Boolean se vea como checkbox y enteros centrados
+    // --- Modelo de tabla (tipado para render correcto) ---
     private final DefaultTableModel model = new DefaultTableModel(
             new Object[]{"Código","Título","Autor","Categoría","Editorial","Año","Stock","Activo"}, 0) {
         @Override public boolean isCellEditable(int r, int c) { return false; }
         @Override public Class<?> getColumnClass(int columnIndex) {
             return switch (columnIndex) {
                 case 5, 6 -> Integer.class;  // Año, Stock
-                case 7 -> Boolean.class;     // Activo
+                case 7 -> Boolean.class;     // Activo (checkbox)
                 default -> String.class;
             };
         }
     };
 
+    // --- Componentes UI que necesito luego ---
     private final JTable table = new JTable(model);
     private final JTextField txtFiltro = new JTextField(28);
+    private final JButton btnNuevo = new JButton("Nuevo");
+    private final JButton btnEditar = new JButton("Editar");
+    private final JButton btnEliminar = new JButton("Eliminar");
+    private final JButton btnRefrescar = new JButton("Refrescar");
+    private final JButton btnBuscar = new JButton("Buscar");
 
-    public Mainframe() {
-        setTitle("Biblioteca - CRUD");
+    // --- Constructor recibiendo sesión ---
+    public Mainframe(Session session) {
+        this.session = session;
+
+        // Título con usuario/rol
+        setTitle("Biblioteca - CRUD  |  Usuario: " +
+                session.getUsuario().getUsername() + " (" + session.getUsuario().getRol() + ")");
         setMinimumSize(new Dimension(960, 560));
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // Top: título y búsqueda
+        // -------- Menú superior --------
+        JMenuBar mb = new JMenuBar();
+        setJMenuBar(mb);
+
+        if (session.isAdmin()) {
+            JMenu mUsuarios = new JMenu("Usuarios");
+            JMenuItem miRegistrar = new JMenuItem("Registrar operador…");
+            JMenuItem miGestion   = new JMenuItem("Gestión de usuarios…");
+
+            miRegistrar.addActionListener(e -> new RegistrarOperadorDialog(this).setVisible(true));
+            miGestion.addActionListener(e -> new GestionUsuariosDialog(this, session).setVisible(true));
+
+            mUsuarios.add(miRegistrar);
+            mUsuarios.add(miGestion);
+            mb.add(mUsuarios);
+        }
+
+        // -------- Top: título + búsqueda --------
         JPanel north = new JPanel(new BorderLayout());
         JLabel title = new JLabel("  Biblioteca - CRUD", SwingConstants.LEFT);
         title.setFont(title.getFont().deriveFont(Font.BOLD, 16f));
@@ -61,25 +86,20 @@ public class Mainframe extends JFrame {
 
         JPanel search = new JPanel();
         txtFiltro.setToolTipText("Buscar por título, autor o categoría (Enter)");
-        JButton btnBuscar = new JButton("Buscar");
         search.add(new JLabel("Buscar:"));
         search.add(txtFiltro);
         search.add(btnBuscar);
         north.add(search, BorderLayout.EAST);
 
-        // Centro: tabla
+        // -------- Centro: tabla --------
         UIUtil.styleTable(table);
         JScrollPane sp = new JScrollPane(table);
 
-        // Sur: barra de acciones
+        // -------- Sur: barra de acciones --------
         JToolBar actions = new JToolBar();
         actions.setFloatable(false);
-        JButton btnNuevo = new JButton("Nuevo");
-        JButton btnEditar = new JButton("Editar");
-        JButton btnEliminar = new JButton("Eliminar");
-        JButton btnRefrescar = new JButton("Refrescar");
 
-        // Mnemonics (Alt+N, Alt+E, ...)
+        // Mnemonics (Alt+N, Alt+E, Alt+L, Alt+R)
         btnNuevo.setMnemonic(KeyEvent.VK_N);
         btnEditar.setMnemonic(KeyEvent.VK_E);
         btnEliminar.setMnemonic(KeyEvent.VK_L);
@@ -96,13 +116,18 @@ public class Mainframe extends JFrame {
         add(sp, BorderLayout.CENTER);
         add(actions, BorderLayout.SOUTH);
 
-        // Acciones
+        // ---- Permisos por rol ----
+        if (!session.isAdmin()) {
+            btnEliminar.setEnabled(false); // Operador: no puede eliminar
+            btnEliminar.setToolTipText("Solo los administradores pueden eliminar registros");
+        }
+
+        // ---- Acciones ----
         Runnable cargar = this::cargarTabla;
+
         btnBuscar.addActionListener(e -> cargar.run());
         btnRefrescar.addActionListener(e -> { txtFiltro.setText(""); cargar.run(); });
-
-        // Buscar con Enter
-        txtFiltro.addActionListener(e -> cargar.run());
+        txtFiltro.addActionListener(e -> cargar.run()); // Enter en búsqueda
 
         // Nuevo
         btnNuevo.addActionListener(e -> {
@@ -134,7 +159,7 @@ public class Mainframe extends JFrame {
             }
         });
 
-        // Eliminar
+        // Eliminar (si es Admin el botón está activo)
         btnEliminar.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row < 0) { aviso("Seleccioná un libro de la tabla."); return; }
@@ -155,6 +180,7 @@ public class Mainframe extends JFrame {
         cargar.run();
     }
 
+    // --- Lógica de carga de tabla ---
     private void cargarTabla() {
         model.setRowCount(0);
         List<Libro> data = service.listar(txtFiltro.getText());
@@ -167,6 +193,7 @@ public class Mainframe extends JFrame {
         if (table.getRowCount() > 0) table.setRowSelectionInterval(0,0);
     }
 
+    // --- Helpers UI ---
     private void mostrarError(Exception ex) {
         ex.printStackTrace();
         JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);

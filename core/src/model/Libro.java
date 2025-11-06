@@ -12,6 +12,7 @@ package model;
  *  - Es el objeto que persiste el DAO y manipula el Service.
  */
 
+
 public class Libro {
 
     // --- Atributos (estado del objeto) ---

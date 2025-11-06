@@ -16,7 +16,6 @@ import java.util.List;
  *  - Instanciar pasando una implementación de LibroDAO (p. ej. JdbcLibroDAO).
  *  - Llamar a crear/actualizar/eliminar/listar desde la interfaz gráfica.
  */
-
 public class LibroService {
 
     // Dependencia al DAO: permite invertir control y facilitar pruebas/cambios.
