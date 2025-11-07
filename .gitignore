@@ -23,3 +23,5 @@
 hs_err_pid*
 replay_pid*
 /app/build/
+/core/build/
+/core/dist/

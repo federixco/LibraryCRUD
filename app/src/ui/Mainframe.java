@@ -18,6 +18,7 @@ import java.util.List;
  * - CRUD de Libros (con búsqueda).
  * - Permisos por rol (Operador no puede eliminar).
  * - Menú "Usuarios" visible solo para ADMIN (gestión y alta de operadores).
+ * - Menú "Cuenta" con "Cerrar sesión".
  * - Muestra usuario/rol en el título.
  */
 public class Mainframe extends JFrame {
@@ -27,6 +28,10 @@ public class Mainframe extends JFrame {
 
     // --- Servicio de negocio ---
     private final LibroService service = new LibroService(new JdbcLibroDAO());
+
+    // --- Flag de logout (lo consulta Main para reabrir login) ---
+    private boolean logoutRequested = false;
+    public boolean isLogoutRequested() { return logoutRequested; }
 
     // --- Modelo de tabla (tipado para render correcto) ---
     private final DefaultTableModel model = new DefaultTableModel(
@@ -59,12 +64,14 @@ public class Mainframe extends JFrame {
                 session.getUsuario().getUsername() + " (" + session.getUsuario().getRol() + ")");
         setMinimumSize(new Dimension(960, 560));
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+
 
         // -------- Menú superior --------
         JMenuBar mb = new JMenuBar();
         setJMenuBar(mb);
 
+        // Menú Usuarios (solo ADMIN)
         if (session.isAdmin()) {
             JMenu mUsuarios = new JMenu("Usuarios");
             JMenuItem miRegistrar = new JMenuItem("Registrar operador…");
@@ -78,6 +85,23 @@ public class Mainframe extends JFrame {
             mb.add(mUsuarios);
         }
 
+        // Menú Cuenta (logout disponible para todos)
+        JMenu mCuenta = new JMenu("Cuenta");
+
+        JMenuItem miCambiarPass = new JMenuItem("Cambiar contraseña…");
+        miCambiarPass.addActionListener(e -> {
+            new ChangePasswordDialog(this, session.getUsuario().getUsername()).setVisible(true);
+        });
+        mCuenta.add(miCambiarPass);
+
+        JMenuItem miLogout = new JMenuItem("Cerrar sesión");
+        miLogout.addActionListener(e -> {
+            logoutRequested = true;
+            dispose();
+        });
+        mCuenta.add(miLogout);
+
+        mb.add(mCuenta);
         // -------- Top: título + búsqueda --------
         JPanel north = new JPanel(new BorderLayout());
         JLabel title = new JLabel("  Biblioteca - CRUD", SwingConstants.LEFT);

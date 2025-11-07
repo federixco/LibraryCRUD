@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * Clase: JdbcLibroDAO
- * -----------------------
+ * ----------------------------
  * Propósito:
  *  - Implementar LibroDAO usando JDBC puro (SQLite o MySQL).
  *  - Traducir filas (ResultSet) a objetos Libro y viceversa.
