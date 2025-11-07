@@ -17,8 +17,11 @@ import java.util.List;
  * Ventana principal del sistema de Biblioteca.
  * - CRUD de Libros (con búsqueda).
  * - Permisos por rol (Operador no puede eliminar).
- * - Menú "Usuarios" visible solo para ADMIN (gestión y alta de operadores).
- * - Menú "Cuenta" con "Cerrar sesión".
+ * - Menú "Usuarios" (solo ADMIN).
+ * - Menú "Préstamos" (nuevo/abiertos).
+ * - Menú "Libros" (solo ADMIN: Activar/Desactivar).
+ * - Menú "Informes" (Auditoría).
+ * - Menú "Cuenta" (Cambiar contraseña / Cerrar sesión).
  * - Muestra usuario/rol en el título.
  */
 public class Mainframe extends JFrame {
@@ -66,7 +69,6 @@ public class Mainframe extends JFrame {
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-
         // -------- Menú superior --------
         JMenuBar mb = new JMenuBar();
         setJMenuBar(mb);
@@ -85,6 +87,37 @@ public class Mainframe extends JFrame {
             mb.add(mUsuarios);
         }
 
+        // ===== Menú Préstamos (todos los roles) =====
+        JMenu mPrestamos = new JMenu("Préstamos");
+        JMenuItem miNuevoPrestamo = new JMenuItem("Nuevo préstamo…");
+        JMenuItem miAbiertos      = new JMenuItem("Abiertos…");
+
+        miNuevoPrestamo.addActionListener(e -> {
+            new PrestamoNuevoDialog(this, session.getUsuario().getUsername()).setVisible(true);
+            cargarTabla(); // por si cambió stock
+        });
+        miAbiertos.addActionListener(e -> new PrestamosAbiertosDialog(this).setVisible(true));
+
+        mPrestamos.add(miNuevoPrestamo);
+        mPrestamos.add(miAbiertos);
+        mb.add(mPrestamos);
+
+        // ===== Menú Libros (solo ADMIN) =====
+        if (session.isAdmin()) {
+            JMenu mLibros = new JMenu("Libros");
+            JMenuItem miToggleActivo = new JMenuItem("Activar/Desactivar seleccionado");
+            miToggleActivo.addActionListener(e -> toggleActivoSeleccionado());
+            mLibros.add(miToggleActivo);
+            mb.add(mLibros);
+        }
+
+        // ===== Menú Informes (todos) =====
+        JMenu mInformes = new JMenu("Informes");
+        JMenuItem miAuditoria = new JMenuItem("Auditoría (recientes)...");
+        miAuditoria.addActionListener(e -> new AuditoriaRecientesDialog(this).setVisible(true));
+        mInformes.add(miAuditoria);
+        mb.add(mInformes);
+
         // Menú Cuenta (logout disponible para todos)
         JMenu mCuenta = new JMenu("Cuenta");
 
@@ -102,6 +135,7 @@ public class Mainframe extends JFrame {
         mCuenta.add(miLogout);
 
         mb.add(mCuenta);
+
         // -------- Top: título + búsqueda --------
         JPanel north = new JPanel(new BorderLayout());
         JLabel title = new JLabel("  Biblioteca - CRUD", SwingConstants.LEFT);
@@ -225,5 +259,29 @@ public class Mainframe extends JFrame {
 
     private void aviso(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Atención", JOptionPane.WARNING_MESSAGE);
+    }
+
+    /** Activar/Desactivar libro seleccionado (solo ADMIN). */
+    private void toggleActivoSeleccionado() {
+        int row = table.getSelectedRow();
+        if (row < 0) { aviso("Seleccioná un libro de la tabla."); return; }
+        int modelRow = table.convertRowIndexToModel(row);
+        String codigo = model.getValueAt(modelRow, 0).toString();
+        boolean activo = (Boolean) model.getValueAt(modelRow, 7);
+
+        try {
+            if (activo) {
+                if (!service.puedeDesactivar(codigo)) {
+                    aviso("No se puede desactivar: hay préstamos abiertos para este libro.");
+                    return;
+                }
+                service.desactivar(codigo);
+            } else {
+                service.activar(codigo);
+            }
+            cargarTabla();
+        } catch (Exception ex) {
+            mostrarError(ex);
+        }
     }
 }

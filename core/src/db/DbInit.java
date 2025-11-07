@@ -6,18 +6,22 @@ import java.sql.*;
 
 /**
  * DbInit
- * - Crea tablas libro y usuario.
- * - Seed: 2 libros y 1 admin (admin / admin123).
+ * ------
+ * - Crea tablas: libro, usuario, prestamo, auditoria.
+ * - Activa FOREIGN KEYS (SQLite).
+ * - Seed: 2 libros y 1 admin (admin / admin123) si faltan.
  */
 public class DbInit {
 
     public static void ensureInit() {
         try (Connection cn = ConnectionFactory.getConnection()) {
+
+            // Activar FK por conexión (en SQLite es por-conn)
             try (Statement s = cn.createStatement()) {
                 s.execute("PRAGMA foreign_keys = ON;");
             }
 
-            // Tabla libro (igual que antes)
+            // ===== Tabla: LIBRO =====
             final String ddlLibro = """
                 CREATE TABLE IF NOT EXISTS libro (
                   codigo     VARCHAR(20) PRIMARY KEY,
@@ -32,7 +36,7 @@ public class DbInit {
                 """;
             try (Statement s = cn.createStatement()) { s.execute(ddlLibro); }
 
-            // Tabla usuario
+            // ===== Tabla: USUARIO =====
             final String ddlUsuario = """
                 CREATE TABLE IF NOT EXISTS usuario (
                   id            VARCHAR(50) PRIMARY KEY,
@@ -45,7 +49,49 @@ public class DbInit {
                 """;
             try (Statement s = cn.createStatement()) { s.execute(ddlUsuario); }
 
-            // Seed libros si vacío
+            // ===== Tabla: PRESTAMO + índices =====
+            final String ddlPrestamo = """
+                CREATE TABLE IF NOT EXISTS prestamo (
+                  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                  libro_codigo      VARCHAR(20)  NOT NULL,
+                  operador_username VARCHAR(80)  NOT NULL,
+                  destinatario      VARCHAR(120) NOT NULL,
+                  cantidad          INTEGER      NOT NULL CHECK(cantidad > 0),
+                  fecha_prestamo    DATETIME     NOT NULL,
+                  fecha_vencimiento DATE         NOT NULL,
+                  fecha_devolucion  DATETIME,
+                  estado            VARCHAR(12)  NOT NULL CHECK(estado IN ('ABIERTO','DEVUELTO')),
+                  FOREIGN KEY (libro_codigo)      REFERENCES libro(codigo)     ON UPDATE CASCADE ON DELETE RESTRICT,
+                  FOREIGN KEY (operador_username) REFERENCES usuario(username) ON UPDATE CASCADE ON DELETE RESTRICT
+                );
+                CREATE INDEX IF NOT EXISTS ix_prestamo_libro       ON prestamo(libro_codigo);
+                CREATE INDEX IF NOT EXISTS ix_prestamo_estado      ON prestamo(estado);
+                CREATE INDEX IF NOT EXISTS ix_prestamo_vencimiento ON prestamo(fecha_vencimiento);
+                """;
+            try (Statement s = cn.createStatement()) { s.execute(ddlPrestamo); }
+
+            // ===== Tabla: AUDITORIA + índices =====
+            final String ddlAuditoria = """
+                CREATE TABLE IF NOT EXISTS auditoria (
+                  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                  ts                DATETIME     NOT NULL,
+                  operador_username VARCHAR(80)  NOT NULL,
+                  tipo              VARCHAR(24)  NOT NULL,   -- PRESTAR, DEVOLVER, DESACTIVAR_LIBRO, ACTIVAR_LIBRO, RENOVAR
+                  libro_codigo      VARCHAR(20),
+                  prestamo_id       INTEGER,
+                  cantidad          INTEGER,
+                  destinatario      VARCHAR(120),
+                  detalle           VARCHAR(255),
+                  FOREIGN KEY (operador_username) REFERENCES usuario(username),
+                  FOREIGN KEY (libro_codigo)      REFERENCES libro(codigo),
+                  FOREIGN KEY (prestamo_id)       REFERENCES prestamo(id)
+                );
+                CREATE INDEX IF NOT EXISTS ix_auditoria_ts   ON auditoria(ts);
+                CREATE INDEX IF NOT EXISTS ix_auditoria_tipo ON auditoria(tipo);
+                """;
+            try (Statement s = cn.createStatement()) { s.execute(ddlAuditoria); }
+
+            // ===== Seed de libros (si tabla vacía) =====
             boolean librosVacios = true;
             try (Statement s = cn.createStatement();
                  ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM libro")) {
@@ -61,7 +107,7 @@ public class DbInit {
                 }
             }
 
-            // Seed admin si no existe
+            // ===== Seed admin (si no existe) =====
             boolean hayAdmin = false;
             try (PreparedStatement ps = cn.prepareStatement("SELECT COUNT(*) FROM usuario WHERE username = ?")) {
                 ps.setString(1, "admin");
