@@ -95,6 +95,22 @@ public class JdbcUsuarioDAO implements UsuarioDao {
             throw new RuntimeException("Error actualizando usuario: " + e.getMessage(), e);
         }
     }
+   
+    @Override
+    public List<Usuario> buscarPorNombreLike(String patron) {
+        String sql = "SELECT * FROM usuario WHERE nombre LIKE ? ORDER BY username";
+        try (Connection cn = ConnectionFactory.getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setString(1, "%" + (patron == null ? "" : patron.trim()) + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                List<Usuario> out = new ArrayList<>();
+                while (rs.next()) out.add(map(rs));
+                return out;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error buscando usuarios por nombre: " + e.getMessage(), e);
+        }
+    }
 
     // Mapea fila → Usuario concreto
     private Usuario map(ResultSet rs) throws SQLException {

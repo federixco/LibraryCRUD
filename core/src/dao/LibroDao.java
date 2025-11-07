@@ -32,4 +32,11 @@ public interface LibroDao {
 
     // Lista libros con un filtro de texto opcional (por título/autor/categoría).
     List<Libro> listar(String filtroTexto);
+    
+    
+    void setActivo(String codigo, boolean activo);
+
+    // Reglas de negocio relacionadas con Préstamos
+    boolean tienePrestamosAbiertos(String codigo);
+
 }

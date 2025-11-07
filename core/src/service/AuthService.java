@@ -9,5 +9,7 @@ import model.Usuario;
 public interface AuthService {
     Usuario login(String username, String passwordPlano);
     Usuario registrarOperador(String nombre, String username, String passwordPlano);
-    //futuro String recuperarPasswordTemporal(String username);
+    String recuperarPasswordTemporal(String username);
+    
+    void cambiarPassword(String username, String actualPlano, String nuevaPlano);
 }
