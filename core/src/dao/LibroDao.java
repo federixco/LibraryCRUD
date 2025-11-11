@@ -4,39 +4,87 @@ import model.Libro;
 import java.util.List;
 
 /**
- * Interfaz: LibroDAO
- * -----------------------
- * Propósito:
- *  - Definir las operaciones de acceso a datos (CRUD + listar con filtro) para la entidad Libro.
- *  - Desacoplar la capa de servicio de la tecnología de persistencia (JDBC, archivos, etc.).
+ * Contrato de acceso a datos para la entidad {@link Libro}.
  *
- * Uso:
- *  - La implementación concreta (JdbcLibroDAO) realiza estas operaciones contra la base.
+ * ¿Qué hace?
+ *  - Define operaciones CRUD y consultas con filtro de texto.
+ *  - Expone banderas de disponibilidad lógica (activo) y una consulta
+ *    de integridad relacionada con préstamos abiertos.
+ *
+ * ¿Por qué interfaz?
+ *  - Desacopla la capa de servicio de la tecnología de persistencia
+ *    (JDBC, memoria, mocks para tests, etc.). Patrón DAO.
+ *
+ * Colabora con:
+ *  - {@link model.Libro} como DTO/entidad de dominio.
+ *  - Implementaciones concretas como {@code JdbcLibroDAO}.
  */
+
 
 
 public interface LibroDao {
 
-    // Crea un libro nuevo en la base (INSERT).
+    /**
+     * Inserta un nuevo libro en la fuente de datos.
+     *
+     * @param l entidad a persistir (se asume validada por la capa de servicio).
+     * @throws RuntimeException si ocurre un error de acceso a datos.
+     */
     void crear(Libro l);
 
-    // Lee un libro por su clave primaria (SELECT ... WHERE codigo=?).
+    /**
+     * Obtiene un libro por su código (clave primaria).
+     *
+     * @param codigo identificador del libro.
+     * @return el libro encontrado o {@code null} si no existe.
+     * @throws RuntimeException si ocurre un error de acceso a datos.
+     */
     Libro leerPorCodigo(String codigo);
 
-    // Actualiza todos los campos del libro identificado por su código (UPDATE).
+    /**
+     * Actualiza los campos del libro identificado por su código.
+     *
+     * @param l entidad con datos actualizados (incluye el mismo código).
+     * @throws RuntimeException si el libro no existe o hay error de acceso a datos.
+     */
     void actualizar(Libro l);
 
-    // Elimina físicamente el libro (DELETE). Si preferís baja lógica, podrías
-    // reemplazar por un UPDATE que ponga activo=0.
+    /**
+     * Elimina físicamente un libro por código.
+     * <p>
+     * Nota: si se requiere baja lógica, preferir {@link #setActivo(String, boolean)}.
+     *
+     * @param codigo identificador del libro a eliminar.
+     * @throws RuntimeException si no existe o hay error de acceso a datos.
+     */
     void eliminar(String codigo);
 
-    // Lista libros con un filtro de texto opcional (por título/autor/categoría).
+    /**
+     * Lista libros aplicando un filtro opcional por texto
+     * (busca por título/autor/categoría, según implementación).
+     *
+     * @param filtroTexto texto a buscar; puede ser {@code null} o vacío para listar todo.
+     * @return lista de libros que cumplen el criterio.
+     * @throws RuntimeException si ocurre un error de acceso a datos.
+     */
     List<Libro> listar(String filtroTexto);
-    
-    
+
+    /**
+     * Cambia el estado lógico de disponibilidad del libro (baja lógica).
+     *
+     * @param codigo código del libro.
+     * @param activo {@code true} para activar, {@code false} para desactivar.
+     * @throws RuntimeException si el libro no existe o hay error de acceso a datos.
+     */
     void setActivo(String codigo, boolean activo);
 
-    // Reglas de negocio relacionadas con Préstamos
+    /**
+     * Indica si el libro tiene préstamos abiertos (regla de integridad para
+     * evitar inconsistencias al desactivar/eliminar).
+     *
+     * @param codigo código del libro.
+     * @return {@code true} si existe al menos un préstamo con estado ABIERTO.
+     * @throws RuntimeException si ocurre un error de acceso a datos.
+     */
     boolean tienePrestamosAbiertos(String codigo);
-
 }
