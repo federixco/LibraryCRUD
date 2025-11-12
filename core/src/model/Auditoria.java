@@ -2,21 +2,6 @@ package model;
 
 import java.time.LocalDateTime;
 
-/**
- * Registro inmutable del “quién / qué / cuándo” de acciones relevantes del sistema.
- *
- * ¿Qué representa?
- *   Un evento de auditoría generado por operaciones de negocio (p.ej. PRESTAR, DEVOLVER,
- *   DESACTIVAR_LIBRO, ACTIVAR_LIBRO, RENOVAR). Algunos campos son opcionales y dependen
- *   del tipo de evento (por ejemplo, un evento de libro puede no tener prestamoId).
- *
- * Usos típicos:
- *   - Listados de informes (últimos N eventos).
- *   - Trazabilidad al defender el examen: mostrar qué operador hizo qué, cuándo y sobre qué recurso.
- */
-
-
-
 public class Auditoria {
 
     /** Identificador autoincremental del evento (PK). */
