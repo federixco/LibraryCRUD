@@ -7,6 +7,7 @@ package dao;
 
 import db.ConnectionFactory;
 import model.Prestamo;
+import model.EstadoPrestamo; // ← usa el enum externo
 
 import java.sql.*;
 import java.time.LocalDate;
@@ -15,8 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * JdbcPrestamoDAO
- * ---------------
+
  * Implementación JDBC del contrato {@link PrestamoDao} para gestionar préstamos.
  *
  * ¿Qué hace?
@@ -31,24 +31,8 @@ import java.util.List;
  *   - Manejo de recursos con try-with-resources.
  *   - Errores SQL envueltos en RuntimeException (simplifica firmas).
  */
-
-
-
 public class JdbcPrestamoDAO implements PrestamoDao {
 
-    /**
-     * Crea un préstamo ABIERTO, descuenta stock y registra auditoría —todo en una transacción.
-     *
-     * Flujo:
-     *  1) Validaciones de dominio contra DB (libro activo, stock suficiente).
-     *  2) INSERT del préstamo (estado = ABIERTO).
-     *  3) UPDATE del stock del libro (stock = stock - cantidad).
-     *  4) INSERT de auditoría (tipo=PRESTAR).
-     *  5) commit.
-     *
-     * @param p entidad de préstamo con datos completos (libro, operador, destinatario, cantidad, fechas).
-     * @return id autogenerado del préstamo.
-     */
     @Override
     public long prestar(Prestamo p) {
         // SQL de alta de préstamo (fecha_devolucion queda NULL; estado ABIERTO)
@@ -58,17 +42,14 @@ public class JdbcPrestamoDAO implements PrestamoDao {
           VALUES (?,?,?,?,?,?, 'ABIERTO')
         """;
 
-        // 1) Abrir conexión y desactivar autocommit para iniciar transacción explícita
         try (Connection cn = ConnectionFactory.getConnection()) {
             cn.setAutoCommit(false);
             try {
-                // 2) Validaciones previas (en la misma conexión)
                 if (!libroActivo(cn, p.getLibroCodigo()))
                     throw new RuntimeException("El libro está desactivado");
                 if (!hayStockSuficiente(cn, p.getLibroCodigo(), p.getCantidad()))
                     throw new RuntimeException("Stock insuficiente");
 
-                // 3) Insertar préstamo y obtener ID autogenerado
                 long id;
                 try (PreparedStatement ps = cn.prepareStatement(insertPrestamo, Statement.RETURN_GENERATED_KEYS)) {
                     ps.setString(1, p.getLibroCodigo());
@@ -84,7 +65,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
                     }
                 }
 
-                // 4) Descontar stock de manera atómica y segura (chequea stock >= cantidad)
                 try (PreparedStatement ps = cn.prepareStatement(
                         "UPDATE libro SET stock = stock - ? WHERE codigo=? AND stock >= ?")) {
                     ps.setInt(1, p.getCantidad());
@@ -94,7 +74,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
                         throw new RuntimeException("No se pudo descontar stock");
                 }
 
-                // 5) Registrar auditoría (PRESTAR)
                 insertAudit(cn,
                         p.getOperadorUsername(),
                         "PRESTAR",
@@ -104,16 +83,13 @@ public class JdbcPrestamoDAO implements PrestamoDao {
                         p.getDestinatario(),
                         "vencimiento=" + p.getFechaVencimiento());
 
-                // 6) Confirmar transacción
                 cn.commit();
                 return id;
 
             } catch (Exception ex) {
-                // 7) Si algo falla, revertimos todo
                 cn.rollback();
                 throw ex;
             } finally {
-                // 8) Restaurar autocommit
                 cn.setAutoCommit(true);
             }
         } catch (SQLException e) {
@@ -121,24 +97,11 @@ public class JdbcPrestamoDAO implements PrestamoDao {
         }
     }
 
-    /**
-     * Marca como DEVUELTO un préstamo, repone stock y registra auditoría —todo transaccional.
-     *
-     * Flujo:
-     *  1) Carga préstamo ABIERTO (cantidad, libro, operador, destinatario).
-     *  2) UPDATE préstamo → estado=DEVUELTO, fecha_devolucion=now.
-     *  3) UPDATE libro → stock = stock + cantidad.
-     *  4) INSERT auditoría (tipo=DEVOLVER).
-     *  5) commit.
-     *
-     * @param idPrestamo id de préstamo abierto a devolver.
-     */
     @Override
     public void devolver(long idPrestamo) {
         try (Connection cn = ConnectionFactory.getConnection()) {
             cn.setAutoCommit(false);
             try {
-                // 1) Traer datos necesarios del préstamo (debe estar ABIERTO)
                 int cant;
                 String codigo;
                 String operador;
@@ -157,7 +120,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
                     }
                 }
 
-                // 2) Marcar préstamo como DEVUELTO y setear fecha_devolucion
                 try (PreparedStatement ps = cn.prepareStatement(
                         "UPDATE prestamo SET estado='DEVUELTO', fecha_devolucion=? WHERE id=?")) {
                     ps.setString(1, LocalDateTime.now().toString());
@@ -165,7 +127,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
                     ps.executeUpdate();
                 }
 
-                // 3) Devolver stock al libro
                 try (PreparedStatement ps = cn.prepareStatement(
                         "UPDATE libro SET stock = stock + ? WHERE codigo=?")) {
                     ps.setInt(1, cant);
@@ -173,10 +134,8 @@ public class JdbcPrestamoDAO implements PrestamoDao {
                     ps.executeUpdate();
                 }
 
-                // 4) Registrar auditoría (DEVOLVER)
                 insertAudit(cn, operador, "DEVOLVER", codigo, idPrestamo, cant, destinatario, null);
 
-                // 5) Confirmar
                 cn.commit();
 
             } catch (Exception ex) {
@@ -190,12 +149,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
         }
     }
 
-    /**
-     * Extiende la fecha de vencimiento de un préstamo ABIERTO y registra auditoría.
-     *
-     * @param idPrestamo id del préstamo a renovar (debe estar ABIERTO).
-     * @param dias cantidad de días a sumar (must > 0).
-     */
     @Override
     public void renovar(long idPrestamo, int dias) {
         if (dias <= 0) throw new IllegalArgumentException("Días inválidos");
@@ -203,7 +156,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
         try (Connection cn = ConnectionFactory.getConnection()) {
             cn.setAutoCommit(false);
             try {
-                // 1) Cargar datos clave (para auditoría y validación de estado)
                 String operador, codigo, destinatario;
                 try (PreparedStatement ps = cn.prepareStatement(
                         "SELECT operador_username, libro_codigo, destinatario " +
@@ -218,7 +170,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
                     }
                 }
 
-                // 2) Sumar días al vencimiento (usando funciones de fecha de SQLite)
                 try (PreparedStatement ps = cn.prepareStatement(
                         "UPDATE prestamo SET fecha_vencimiento = date(fecha_vencimiento, '+'||?||' day') " +
                         "WHERE id=? AND estado='ABIERTO'")) {
@@ -228,10 +179,8 @@ public class JdbcPrestamoDAO implements PrestamoDao {
                         throw new RuntimeException("No se pudo renovar");
                 }
 
-                // 3) Auditoría (RENOVAR) con detalle "+Nd"
                 insertAudit(cn, operador, "RENOVAR", codigo, idPrestamo, null, destinatario, "+" + dias + "d");
 
-                // 4) Confirmar
                 cn.commit();
 
             } catch (Exception ex) {
@@ -245,12 +194,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
         }
     }
 
-    /**
-     * Devuelve la lista de préstamos ABIERTO con filtro opcional (por título, autor o destinatario).
-     * Orden: vencimientos más próximos primero.
-     *
-     * @param filtro texto para buscar (puede ser null/"").
-     */
     @Override
     public List<Prestamo> abiertos(String filtro) {
         String sql = """
@@ -263,14 +206,11 @@ public class JdbcPrestamoDAO implements PrestamoDao {
         ORDER BY p.fecha_vencimiento ASC
         """;
 
-        // 1) Conectar y preparar
         try (Connection cn = ConnectionFactory.getConnection();
              PreparedStatement ps = cn.prepareStatement(sql)) {
 
-            // 2) 5 placeholders → 5 parámetros con el mismo filtro
             for (int i = 1; i <= 5; i++) ps.setString(i, filtro);
 
-            // 3) Ejecutar y mapear
             try (ResultSet rs = ps.executeQuery()) {
                 List<Prestamo> out = new ArrayList<>();
                 while (rs.next()) out.add(map(rs));
@@ -282,14 +222,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
         }
     }
 
-    /**
-     * Consulta histórica de préstamos con rango de fechas y filtro opcional.
-     * Orden: más recientes primero.
-     *
-     * @param desde fecha mínima (inclusive) o null.
-     * @param hasta fecha máxima (inclusive) o null.
-     * @param filtro texto para buscar (puede ser null/"").
-     */
     @Override
     public List<Prestamo> historico(LocalDate desde, LocalDate hasta, String filtro) {
         String sql = """
@@ -302,20 +234,16 @@ public class JdbcPrestamoDAO implements PrestamoDao {
         ORDER BY p.fecha_prestamo DESC
         """;
 
-        // 1) Conectar y preparar
         try (Connection cn = ConnectionFactory.getConnection();
              PreparedStatement ps = cn.prepareStatement(sql)) {
 
-            // 2) Rango de fechas (placeholders 1..4)
             ps.setString(1, desde == null ? null : desde.toString());
             ps.setString(2, desde == null ? null : desde.toString());
             ps.setString(3, hasta == null ? null : hasta.toString());
             ps.setString(4, hasta == null ? null : hasta.toString());
 
-            // 3) Filtro de texto (placeholders 5..9)
             for (int i = 5; i <= 9; i++) ps.setString(i, filtro);
 
-            // 4) Ejecutar y mapear
             try (ResultSet rs = ps.executeQuery()) {
                 List<Prestamo> out = new ArrayList<>();
                 while (rs.next()) out.add(map(rs));
@@ -329,7 +257,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
 
     // ===== Helpers de validación en DB (misma conexión/tx) =====
 
-    /** Devuelve true si el libro está marcado como activo. */
     private boolean libroActivo(Connection cn, String codigo) throws SQLException {
         try (PreparedStatement ps = cn.prepareStatement("SELECT activo FROM libro WHERE codigo=?")) {
             ps.setString(1, codigo);
@@ -337,7 +264,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
         }
     }
 
-    /** Devuelve true si el stock actual del libro es >= cant. */
     private boolean hayStockSuficiente(Connection cn, String codigo, int cant) throws SQLException {
         try (PreparedStatement ps = cn.prepareStatement("SELECT stock FROM libro WHERE codigo=?")) {
             ps.setString(1, codigo);
@@ -347,10 +273,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
 
     // ===== Registro de auditoría (misma transacción) =====
 
-    /**
-     * Inserta un evento de auditoría.
-     * Campos opcionales se registran como NULL cuando corresponde.
-     */
     private void insertAudit(Connection cn, String op, String tipo, String libro, Long prestamoId,
                              Integer cantidad, String dest, String detalle) throws SQLException {
         try (PreparedStatement ps = cn.prepareStatement(
@@ -370,10 +292,6 @@ public class JdbcPrestamoDAO implements PrestamoDao {
 
     // ===== Mapeo ResultSet → Prestamo =====
 
-    /**
-     * Convierte la fila actual del ResultSet a un {@link Prestamo}.
-     * Maneja correctamente columnas que pueden venir NULL.
-     */
     private Prestamo map(ResultSet rs) throws SQLException {
         Prestamo p = new Prestamo();
         p.setId(rs.getLong("id"));
@@ -385,7 +303,8 @@ public class JdbcPrestamoDAO implements PrestamoDao {
         p.setFechaVencimiento(LocalDate.parse(rs.getString("fecha_vencimiento")));
         String fdev = rs.getString("fecha_devolucion");
         p.setFechaDevolucion(fdev == null ? null : LocalDateTime.parse(fdev));
-        p.setEstado(Prestamo.Estado.valueOf(rs.getString("estado")));
+        // ← usa enum externo
+        p.setEstado(EstadoPrestamo.valueOf(rs.getString("estado")));
         return p;
     }
 }

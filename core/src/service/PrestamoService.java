@@ -7,6 +7,7 @@ package service;
 
 import dao.PrestamoDao;
 import model.Prestamo;
+import model.EstadoPrestamo; // ← enum externo
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,14 +35,6 @@ public class PrestamoService {
 
     /**
      * Registra un nuevo préstamo ABIERTO.
-     *
-     * Flujo:
-     *  1) Valida parámetros (cadenas no vacías, cantidad/días > 0).
-     *  2) Construye {@link Prestamo} con:
-     *     - fechaPrestamo = ahora
-     *     - fechaVencimiento = hoy + días
-     *     - estado = ABIERTO
-     *  3) Delegar en {@link PrestamoDao#prestar(Prestamo)} (transacción + auditoría).
      *
      * @param libroCodigo código del libro (FK).
      * @param operadorUsername username del operador que registra el préstamo.
@@ -75,52 +68,29 @@ public class PrestamoService {
         p.setCantidad(cantidad);
         p.setFechaPrestamo(LocalDateTime.now());
         p.setFechaVencimiento(LocalDate.now().plusDays(dias));
-        p.setEstado(Prestamo.Estado.ABIERTO);
+        p.setEstado(EstadoPrestamo.ABIERTO); // ← enum externo
 
         // 3) Delegar operación transaccional
         return dao.prestar(p);
     }
 
-    /**
-     * Marca un préstamo como DEVUELTO (repone stock y audita en DAO).
-     *
-     * @param idPrestamo id de préstamo ABIERTO.
-     * @throws RuntimeException si no existe/no está abierto o falla persistencia.
-     */
+    /** Marca un préstamo como DEVUELTO (repone stock y audita en DAO). */
     public void devolver(long idPrestamo) {
         dao.devolver(idPrestamo);
     }
 
-    /**
-     * Extiende la fecha de vencimiento de un préstamo ABIERTO.
-     *
-     * @param idPrestamo id del préstamo.
-     * @param dias días a sumar (> 0).
-     * @throws IllegalArgumentException si días <= 0.
-     * @throws RuntimeException si no existe/no está abierto o falla persistencia.
-     */
+    /** Extiende la fecha de vencimiento de un préstamo ABIERTO. */
     public void renovar(long idPrestamo, int dias) {
+        if (dias <= 0) throw new IllegalArgumentException("Días inválidos");
         dao.renovar(idPrestamo, dias);
     }
 
-    /**
-     * Lista préstamos en estado ABIERTO con filtro opcional por texto.
-     *
-     * @param filtro texto a buscar (título/autor/destinatario, según implementación); puede ser null/"".
-     * @return lista de préstamos abiertos (típicamente ordenados por vencimiento asc).
-     */
+    /** Lista préstamos en estado ABIERTO con filtro opcional por texto. */
     public List<Prestamo> abiertos(String filtro) {
         return dao.abiertos(filtro);
     }
 
-    /**
-     * Consulta histórica de préstamos con rango de fechas y filtro opcional.
-     *
-     * @param desde fecha mínima (inclusive) o null.
-     * @param hasta fecha máxima (inclusive) o null.
-     * @param filtro texto a buscar o null/"" para no filtrar.
-     * @return lista de préstamos en el período (típicamente más recientes primero).
-     */
+    /** Consulta histórica de préstamos con rango de fechas y filtro opcional. */
     public List<Prestamo> historico(LocalDate desde, LocalDate hasta, String filtro) {
         return dao.historico(desde, hasta, filtro);
     }
