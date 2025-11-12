@@ -1,5 +1,10 @@
 package util;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 

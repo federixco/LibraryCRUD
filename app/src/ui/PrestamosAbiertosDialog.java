@@ -1,5 +1,10 @@
 package ui;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import dao.JdbcLibroDAO;
 import dao.JdbcPrestamoDAO;
 import model.Libro;

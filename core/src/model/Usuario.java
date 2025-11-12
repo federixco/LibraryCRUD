@@ -1,6 +1,11 @@
 package model;
 
 /**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
+/**
  * Clase base **abstracta** para los usuarios del sistema.
  *
  * ¿Qué modela?

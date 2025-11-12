@@ -1,5 +1,10 @@
 package biblioteca.app;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import db.DbInit;
 import session.Session;
 import ui.LoginDialog;

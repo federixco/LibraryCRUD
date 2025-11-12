@@ -1,6 +1,11 @@
 package model;
 
 /**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
+/**
  * Clase: Libro
  * -----------------------
  * Propósito:

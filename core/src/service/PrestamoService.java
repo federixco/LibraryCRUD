@@ -1,5 +1,10 @@
 package service;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import dao.PrestamoDao;
 import model.Prestamo;
 

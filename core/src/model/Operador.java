@@ -1,6 +1,11 @@
 package model;
 
 /**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
+/**
  * Subtipo de {@link Usuario} con permisos limitados (p.ej. no puede eliminar registros).
  *
  * ¿Para qué existe?
@@ -10,8 +15,6 @@ package model;
  * Decisión:
  *  - El rol se fija a {@link Rol#OPERADOR} desde el constructor y no puede alterarse.
  */
-
-
 
 public class Operador extends Usuario {
 

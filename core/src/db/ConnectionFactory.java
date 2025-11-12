@@ -1,5 +1,10 @@
 package db;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;

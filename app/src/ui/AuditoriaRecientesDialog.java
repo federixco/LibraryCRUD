@@ -1,5 +1,10 @@
 package ui;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import dao.JdbcAuditoriaDao;
 import model.Auditoria;
 

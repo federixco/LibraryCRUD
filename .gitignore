@@ -25,3 +25,9 @@ replay_pid*
 /app/build/
 /core/build/
 /core/dist/
+app/nbproject/private/private.properties
+app/nbproject/private/private.properties
+core/nbproject/private/private.properties
+app/nbproject/private/private.properties
+*.properties
+core/nbproject/private/private.properties

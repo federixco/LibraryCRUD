@@ -1,6 +1,9 @@
 package ui;
 
-
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;

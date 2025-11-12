@@ -1,5 +1,10 @@
 package dao;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import model.Auditoria;
 import java.util.List;
 
@@ -17,8 +22,6 @@ import java.util.List;
  *   - Permite cambiar la tecnología de persistencia (JDBC, memoria, mock en tests) sin
  *     tocar la lógica de negocio (patrón DAO).
  */
-
-
 
 public interface AuditoriaDao {
 

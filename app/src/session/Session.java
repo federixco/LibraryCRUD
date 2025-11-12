@@ -1,5 +1,10 @@
 package session;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import model.Rol;
 import model.Usuario;
 

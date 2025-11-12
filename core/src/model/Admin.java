@@ -1,6 +1,11 @@
 package model;
 
 /**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
+/**
  * Admin
  * -----
  * Subtipo de {@link Usuario} que representa a un usuario con permisos completos del sistema.

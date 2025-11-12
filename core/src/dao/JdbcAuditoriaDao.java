@@ -1,5 +1,10 @@
 package dao;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import db.ConnectionFactory;
 import model.Auditoria;
 

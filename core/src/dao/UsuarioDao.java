@@ -1,5 +1,10 @@
 package dao;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import model.Usuario;
 import java.util.List;
 

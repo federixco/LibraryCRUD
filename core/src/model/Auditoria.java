@@ -1,5 +1,10 @@
 package model;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import java.time.LocalDateTime;
 
 public class Auditoria {

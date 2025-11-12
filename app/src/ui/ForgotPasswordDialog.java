@@ -1,5 +1,10 @@
 package ui;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import service.AuthService;
 import service.AuthServiceImpl;
 import dao.JdbcUsuarioDAO;
@@ -36,7 +41,7 @@ public class ForgotPasswordDialog extends JDialog {
                 String tmp = auth.recuperarPasswordTemporal(txtUser.getText().trim());
                 JOptionPane.showMessageDialog(this,
                         "Tu contraseña temporal es:\n\n" + tmp +
-                        "\n\nIniciá sesión y cambiala desde 'Cuenta > Cambiar contraseña' (si lo habilitás).",
+                        "\n\nIniciá sesión y cambiala desde 'Cuenta > Cambiar contraseña'.",
                         "Temporal generada", JOptionPane.INFORMATION_MESSAGE);
                 setVisible(false);
             } catch (Exception ex) {

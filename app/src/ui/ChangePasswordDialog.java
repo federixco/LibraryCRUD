@@ -1,5 +1,10 @@
 package ui;
 
+/**
+ * @author Federico Gabriel Arena
+ * @author Fabrizio Manuel Mansilla
+ */
+
 import dao.JdbcUsuarioDAO;
 import service.AuthService;
 import service.AuthServiceImpl;
